@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, List
 
 import torch
 
-from flashinfer_bench.apply import apply
 from flashinfer_bench.integration.patch_manager import PatchSpec
 from flashinfer_bench.integration.utils import ArgBinder
 
@@ -54,6 +53,9 @@ class RMSNormAdapter:
 
             def _fb(**_rk):
                 return orig(*args, **kwargs)
+
+            # Local import to avoid circular dependency
+            from flashinfer_bench.apply import apply
 
             ret = apply(def_name, runtime_kwargs=rk, fallback=_fb)
             return ret

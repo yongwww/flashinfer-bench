@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, List
 
 import torch
 
-from flashinfer_bench.apply import apply
 from flashinfer_bench.integration.flashinfer.common import (
     infer_kv_layout_from_args,
     infer_paged_kv_layout_from_tensors,
@@ -123,6 +122,9 @@ class GQAPagedPrefillAdapter:
                 # Fallback
                 def _fb(**_rk):
                     return orig(inst, *args, **kwargs)
+
+                # Local import to avoid circular dependency
+                from flashinfer_bench.apply import apply
 
                 ret = apply(_def_name_resolver, runtime_kwargs=rk, fallback=_fb)
 

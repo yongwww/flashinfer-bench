@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import logging
+import sysconfig
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import tvm_ffi
+from torch.utils.cpp_extension import include_paths as torch_include_paths
+from torch.utils.cpp_extension import library_paths as torch_library_paths
 from tvm_ffi.utils import FileLock
 
 from flashinfer_bench.compile.builder import Builder, BuildError, create_pkg_name
@@ -81,9 +84,18 @@ class TVMFFIBuilder(Builder):
         Returns
         -------
         bool
-            True if solution language is CUDA (includes both .cu and .cpp files)
+            True if solution language is CUDA and doesn't use pybind11
+            (pybind11 solutions should be built by CUDABuilder instead)
         """
-        return sol.spec.language == SupportedLanguages.CUDA
+        if sol.spec.language != SupportedLanguages.CUDA:
+            return False
+
+        # Check if solution uses pybind11 - if so, it should be built by CUDABuilder
+        for source in sol.sources:
+            if "PYBIND11_MODULE" in source.content or "pybind11" in source.content:
+                return False
+
+        return True
 
     def _make_key(self, solution: Solution) -> str:
         """Generate unique cache key for a solution.
@@ -376,7 +388,16 @@ class TVMFFIBuilder(Builder):
                     output_lib_path = str(build_path / f"{key}.so")
                 else:
                     cpp_files, cuda_files = self._write_sources(build_path, sol)
-                    extra_include_paths = [str(build_path)]
+                    # Include build path, PyTorch headers, and Python headers
+                    python_include = sysconfig.get_paths()["include"]
+                    extra_include_paths = (
+                        [str(build_path), python_include] + torch_include_paths("cuda")
+                    )
+                    # Add library paths and libraries for CUDA runtime and PyTorch
+                    lib_paths = torch_library_paths("cuda")
+                    extra_ldflags = [f"-L{p}" for p in lib_paths]
+                    # Link against PyTorch libraries
+                    extra_ldflags.extend(["-ltorch", "-ltorch_python", "-lc10"])
                     try:
                         # Compile sources to shared library
                         output_lib_path = tvm_ffi.cpp.build(
@@ -384,6 +405,7 @@ class TVMFFIBuilder(Builder):
                             cpp_files=cpp_files,
                             cuda_files=cuda_files,
                             extra_include_paths=extra_include_paths,
+                            extra_ldflags=extra_ldflags,
                             build_directory=build_path,
                         )
                     except Exception as e:

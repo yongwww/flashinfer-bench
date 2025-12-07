@@ -44,6 +44,18 @@ class TraceSet:
     traces: Dict[str, List[Trace]] = field(default_factory=dict)
     """The traces in the database. Map from definition name to all traces for that definition."""
 
+
+    _solution_by_name: Dict[str, Solution] = field(default_factory=dict, init=False, repr=False)
+    """Fast lookup index: solution name -> Solution object. Automatically maintained."""
+
+    def __post_init__(self):
+        """Initialize the _solution_by_name index from existing solutions."""
+        for solutions_list in self.solutions.values():
+            for solution in solutions_list:
+                if solution.name in self._solution_by_name:
+                    raise ValueError(f"Duplicate solution name found: {solution.name}")
+                self._solution_by_name[solution.name] = solution
+
     @property
     def definitions_path(self) -> Path:
         if self.root is None:
@@ -187,11 +199,7 @@ class TraceSet:
         Optional[Solution]
             The solution with the given name, or None if not found.
         """
-        for solution_list in self.solutions.values():
-            for solution in solution_list:
-                if solution.name == name:
-                    return solution
-        return None
+        return self._solution_by_name.get(name)
 
     def filter_traces(self, def_name: str, atol: float = 1e-2, rtol: float = 1e-2) -> List[Trace]:
         """Filter traces for a definition based on error bounds.

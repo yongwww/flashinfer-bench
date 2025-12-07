@@ -88,4 +88,4 @@ def create_package_name(solution: Solution, package_prefix: str = "") -> str:
     if not s or s[0].isdigit():
         s = "_" + s
 
-    return package_prefix + s + "_" + solution.hash()[:6]
+    return package_prefix + s

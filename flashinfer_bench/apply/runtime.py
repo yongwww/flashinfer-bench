@@ -121,6 +121,7 @@ class ApplyRuntime:
             if sol:
                 runnable = get_builder_registry().build(defn, sol)
 
+        print(f"FlashInfer-Bench Apply for {def_name}")
         # Miss policy
         if runnable is None:
             if self._apply_config.on_miss_policy == "use_def_best":

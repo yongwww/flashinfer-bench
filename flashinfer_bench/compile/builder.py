@@ -11,10 +11,27 @@ from flashinfer_bench.data import Definition, Solution, SourceFile
 
 
 def write_sources_to_dir(dir: str, sources: list[SourceFile]) -> None:
+    """Write source files to directory, preserving timestamps if content unchanged.
+    
+    This is important for caching: PyTorch's cpp_extension.load checks file 
+    modification times to decide whether to recompile. By only writing files 
+    when content actually changes, we avoid unnecessary recompilations.
+    """
     os.makedirs(dir, exist_ok=True)
     for src in sources:
         abspath = os.path.join(dir, src.path)
         os.makedirs(os.path.dirname(abspath), exist_ok=True)
+        
+        # Check if file exists and content matches - skip write to preserve timestamp
+        if os.path.exists(abspath):
+            try:
+                with open(abspath, "r", encoding="utf-8") as f:
+                    existing_content = f.read()
+                if existing_content == src.content:
+                    continue  # Skip writing, preserve timestamp for caching
+            except Exception:
+                pass  # If read fails, just write the file
+        
         with open(abspath, "w", encoding="utf-8") as f:
             f.write(src.content)
 

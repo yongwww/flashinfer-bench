@@ -24,14 +24,14 @@ def main():
     target_gpu = "B200"
 
     # TODO: adjust local path to traceset
-    traceset_path = "/home/akj2/flashinfer-trace"
+    traceset_path = "/localhome/local-yowu/flashinfer-trace"
 
     print(f"Loading TraceSet from: {traceset_path}")
     traceset = TraceSet.from_path(traceset_path)
 
     # all_definitions = list(traceset.definitions.keys())
     # Filter for rmsnorm definitions only
-    all_definitions = [name for name in traceset.definitions.keys() if "rmsnorm" in name.lower()]
+    all_definitions = [name for name in traceset.definitions.keys() if "fused_add_rmsnorm_h2048" in name.lower()]
 
     print(f"All definitions found: {len(all_definitions)}")
 
@@ -114,6 +114,17 @@ def main():
                 save_json_file(solution, solution_path)
 
                 print(f"Solution saved to: {solution_path}")
+                print(f"\n{'─'*60}")
+                print(f"Generated Solution: {solution.name}")
+                print(f"Author: {solution.author}")
+                print(f"Language: {solution.spec.language.value}")
+                print(f"Entry point: {solution.spec.entry_point}")
+                print(f"{'─'*60}")
+                for src in solution.sources:
+                    print(f"📄 File: {src.path}")
+                    print(f"{'─'*60}")
+                    print(src.content)
+                    print(f"{'─'*60}\n")
                 successful_generations += 1
 
             except Exception as e:
